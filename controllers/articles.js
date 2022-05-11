@@ -1,16 +1,34 @@
 const Article = require('../models/article')
 const Category = require('../models/category')
 
-
 // Συναρτηση που αναζητα με βαση το id ενα συκγεκριμενο αρθρο και το στελνει στον client
 const getArticle = async (req, res) => {
+  let withContent = req.body.withContent
+  let article
   try {
-    const article = await Article.findById(req.params.id).exec()
+    if (withContent == true) {
+      article = await Article.findById(req.params.id).exec()
+    } else {
+      article = await Article.findById(req.params.id, {
+        title: 1,
+        description: 1,
+      }).exec()
+    }
     res.send(article)
   } catch {
     res.send('Error getArticle')
   }
 }
+
+// // Συναρτηση που αναζητα με βαση το id ενα συκγεκριμενο αρθρο και το στελνει στον client
+// const getArticle = async (req, res) => {
+//   try {
+//     const article = await Article.findById(req.params.id).exec()
+//     res.send(article)
+//   } catch {
+//     res.send('Error getArticle')
+//   }
+// }
 
 // Στελνει ολα τα articles
 const getArticles = async (req, res) => {
@@ -36,7 +54,7 @@ const getNoContentArticles = async (req, res) => {
 
 /**
  * Συναρτηση editArticle που αφου το δωθει το id προσπαθει να βρει το αρθρο
- * με το συκγεκριμενο id και να κανει update μονο το content 
+ * με το συκγεκριμενο id και να κανει update μονο το content
  */
 const editArticle = async (req, res) => {
   let findid = req.body.id
@@ -79,7 +97,6 @@ const deleteArticle = async (req, res) => {
     res.send('Error Deleting Article')
   }
 }
-
 
 /**
  * Συναρτηση createArticle
@@ -131,10 +148,62 @@ const createArticle = async (req, res) => {
 }
 
 /**
- * Η συναρτηση αυτη ενωνει τα δυο collections articles και categories 
+ * Η συναρτηση αυτη ενωνει τα δυο collections articles και categories
  * και αναλογα αν ο χρηστης εχει ορισει κατηγορια η οχι καλει το pipeline η οχι
  * και επιστρεφει τα αποτελεσματα στον χρηστη
  */
+const getNoContentSpecificArticles = async (req, res) => {
+  console.log('getSpecificArticles')
+  let query
+  let findCategory = req.body.category
+  console.log(findCategory)
+  try {
+    if (findCategory == undefined || findCategory == '') {
+      console.log('testtest')
+
+      query = Article.aggregate([
+        {
+          $lookup: {
+            from: 'categories',
+            localField: 'category',
+            foreignField: '_id',
+            as: 'category',
+          },
+        },
+        {
+          $unwind: '$category',
+        },
+        { $project: { title: 1, description: 1, category: 1 } },
+      ])
+    } else {
+      query = Article.aggregate([
+        {
+          $lookup: {
+            from: 'categories',
+            localField: 'category',
+            foreignField: '_id',
+            pipeline: [{ $match: { name: req.body.category } }],
+            as: 'category',
+          },
+        },
+        {
+          $unwind: '$category',
+        },
+        { $project: { title: 1, description: 1, category: 1 } },
+      ])
+    }
+    const categories = await query.exec()
+    // let queryArticles = Article.find({name: req.body.category})
+    if (categories.length > 0) {
+      res.send(categories)
+    } else {
+      res.status(201).send('No Article With That Category Found!')
+    }
+  } catch {
+    res.redirect('/')
+  }
+}
+
 const getSpecificArticles = async (req, res) => {
   console.log('getSpecificArticles')
   let query
@@ -188,6 +257,7 @@ module.exports = {
   getArticle,
   createArticle,
   getNoContentArticles,
+  getNoContentSpecificArticles,
   getSpecificArticles,
   editArticle,
   deleteArticle,

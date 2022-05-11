@@ -28,7 +28,6 @@ const db = mongoose.connection
 db.on('error', error => console.error(error))
 db.once('open', () => console.log('Connected to Mongoose'))
 //---------------------------End Mongoose-------------------------------
-
 app.use('/articles', articlesRoutes)
 app.use('/categories', categoriesRoutes)
 app.all('*', (req, res) => res.send("That route doesn't exist")) // Επιστροφη μυνηματος αν δεν υπαχρει το path
